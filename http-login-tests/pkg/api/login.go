@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 )
 
 type LoginRequest struct {
@@ -15,7 +14,7 @@ type LoginResponse struct {
 	Token string `json:"token"`
 }
 
-func doLoginRequest(client http.Client, loginURL, password string) (string, error) {
+func doLoginRequest(client ClientInterface, loginURL, password string) (string, error) {
 
 	loginRequest := LoginRequest{
 		Password: password,
