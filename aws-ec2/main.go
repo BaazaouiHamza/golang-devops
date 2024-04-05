@@ -44,7 +44,7 @@ func createEC2(ctx context.Context, region string) (string, error) {
 		return "", fmt.Errorf("describeKeyPair error: %s", err)
 	}
 
-	if len(keyPairs.KeyPairs) == 0 {
+	if keyPairs == nil || len(keyPairs.KeyPairs) == 0 {
 		keyPair, err := ec2Client.CreateKeyPair(ctx, &ec2.CreateKeyPairInput{
 			KeyName: aws.String("go-aws-demo"),
 		})
