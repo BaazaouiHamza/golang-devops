@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	v1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -59,15 +60,29 @@ func deploy(ctx context.Context, client *kubernetes.Clientset) (map[string]strin
 	}
 
 	obj, groupVersionKind, err := scheme.Codecs.UniversalDeserializer().Decode(appFile, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("decore error: %s", err)
+	}
 
 	switch obj.(type) {
 	case *v1.Deployment:
 		deployment = obj.(*v1.Deployment)
 	default:
-		return nil, fmt.Errorf("unrecognized type: %s\n", groupVersionKind)
+		return nil, fmt.Errorf("unrecognized type: %s", groupVersionKind)
 	}
 
-	deploymentResponse, err := client.AppsV1().Deployments("default").Create(ctx, deployment, metav1.CreateOptions{})
+	_, err = client.AppsV1().Deployments("default").Get(ctx, deployment.Name, metav1.GetOptions{})
+	if err != nil && errors.IsNotFound(err) {
+		deploymentResponse, err := client.AppsV1().Deployments("default").Create(ctx, deployment, metav1.CreateOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("deployment error: %s", err)
+		}
+		return deploymentResponse.Spec.Template.Labels, nil
+	} else if err != nil && !errors.IsNotFound(err) {
+		return nil, fmt.Errorf("deployment get error: %s", err)
+	}
+
+	deploymentResponse, err := client.AppsV1().Deployments("default").Update(ctx, deployment, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("deployment error: %s", err)
 	}
